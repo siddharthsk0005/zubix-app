@@ -1,0 +1,28 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+*.iml
+.idea/
+.vscode/
+ios/Flutter/.last_build_id
+app.*.symbols
+app.*.map.json
+
+# Node / backend
+node_modules/
+backend/dist/
+npm-debug.log*
+
+# Secrets and environment files
+.env
+.env.*
+**/.env
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
