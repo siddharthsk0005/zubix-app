@@ -6,6 +6,7 @@ import { AppError } from '../lib/errors';
 import { clearFailures, isLocked, recordFailure } from '../lib/login-lockout';
 import { isValidGstin } from '../lib/gstin';
 import { requireAuth, requireRole, signToken } from '../middleware/auth';
+import { syncSessionStatuses } from '../lib/sessions';
 
 export const brandsRouter = Router();
 
@@ -229,6 +230,7 @@ const sessionRequestSchema = z
 brandsRouter.get('/me/sessions', async (req, res, next) => {
   try {
     const brand = await loadOwnBrand(req.auth!.id);
+    await syncSessionStatuses();
     const sessions = await prisma.session.findMany({
       where: { brandId: brand.id },
       orderBy: { startsAt: 'desc' },

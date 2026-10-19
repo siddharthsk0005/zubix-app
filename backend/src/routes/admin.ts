@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/errors';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { generateCouponCodes, syncSessionStatuses } from '../lib/sessions';
 
 export const adminRouter = Router();
 
@@ -125,6 +126,7 @@ adminRouter.post('/brands/:id/review', async (req, res, next) => {
 adminRouter.get('/sessions', async (req, res, next) => {
   try {
     const status = z.enum(['REQUESTED', 'APPROVED', 'REJECTED', 'LIVE', 'ENDED', 'CANCELLED']).optional().parse(req.query.status);
+    await syncSessionStatuses();
     const sessions = await prisma.session.findMany({
       where: status ? { status } : {},
       orderBy: { startsAt: 'desc' },
@@ -147,7 +149,10 @@ adminRouter.post('/sessions/:id/review', async (req, res, next) => {
     const status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
 
     const session = await prisma.$transaction(async (tx) => {
-      const existing = await tx.session.findUnique({ where: { id }, select: { id: true, status: true } });
+      const existing = await tx.session.findUnique({
+        where: { id },
+        select: { id: true, status: true, couponCount: true, couponExpiresAt: true },
+      });
       if (!existing) {
         throw new AppError(404, 'NOT_FOUND', 'Session not found');
       }
@@ -159,6 +164,16 @@ adminRouter.post('/sessions/:id/review', async (req, res, next) => {
         data: { status, reviewNote: note ?? null },
         include: { brand: { select: { id: true, name: true } } },
       });
+      if (decision === 'APPROVE') {
+        // Coupons exist from approval so shoppers can claim them once the session goes live.
+        await tx.coupon.createMany({
+          data: generateCouponCodes(existing.couponCount).map((code) => ({
+            code,
+            sessionId: id,
+            expiresAt: existing.couponExpiresAt,
+          })),
+        });
+      }
       await tx.auditLog.create({
         data: {
           actorId: req.auth!.id,

@@ -6,6 +6,7 @@ import { adminAuthRouter } from './routes/admin-auth';
 import { adminRouter } from './routes/admin';
 import { brandsRouter } from './routes/brands';
 import { categoriesRouter } from './routes/categories';
+import { couponsRouter, sessionsRouter } from './routes/shopper';
 import { errorHandler, notFound } from './middleware/errors';
 
 export const app = express();
@@ -33,6 +34,8 @@ app.use('/admin/auth', adminAuthRouter);
 app.use('/admin', adminRouter);
 app.use('/brands', brandsRouter);
 app.use('/categories', categoriesRouter);
+app.use('/sessions', sessionsRouter);
+app.use('/coupons', couponsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

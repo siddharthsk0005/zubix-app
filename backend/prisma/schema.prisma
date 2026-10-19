@@ -62,6 +62,7 @@ model User {
 
   brand      Brand?
   coupons    Coupon[]      @relation("CouponClaimedBy")
+  claimTickets ClaimTicket[]
 }
 
 model Category {
@@ -126,6 +127,7 @@ model Session {
   updatedAt       DateTime      @updatedAt
 
   coupons         Coupon[]
+  claimTickets    ClaimTicket[]
 
   @@index([status, startsAt])
   @@index([categoryId, startsAt])
@@ -147,6 +149,19 @@ model Coupon {
   // A user can hold at most one coupon per session.
   @@unique([sessionId, userId])
   @@index([sessionId, status])
+}
+
+/// Starts the countdown a shopper must wait before claiming a coupon in a live session.
+model ClaimTicket {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readyAt   DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, userId])
 }
 
 model AuditLog {

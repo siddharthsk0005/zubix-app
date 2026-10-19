@@ -31,12 +31,12 @@ class ApiClient {
     Map<String, dynamic>? body,
     String? token,
   }) =>
-      _send('POST', path, body: body, token: token);
+      send('POST', path, body: body, token: token);
 
   Future<Map<String, dynamic>> get(String path, {String? token}) =>
-      _send('GET', path, token: token);
+      send('GET', path, token: token);
 
-  Future<Map<String, dynamic>> _send(
+  Future<Map<String, dynamic>> send(
     String method,
     String path, {
     Map<String, dynamic>? body,

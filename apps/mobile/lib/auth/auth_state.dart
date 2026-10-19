@@ -80,6 +80,25 @@ class AuthState extends ChangeNotifier {
 
   Future<void> signOut() => _clearSession();
 
+  /// Sends a request with the saved token. A 401 means the session is gone.
+  Future<Map<String, dynamic>> authedRequest(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final token = await _tokens.read();
+    if (token == null) {
+      await _clearSession();
+      throw ApiException('UNAUTHORIZED', 'Please sign in again.', statusCode: 401);
+    }
+    try {
+      return await _api.send(method, path, body: body, token: token);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) await _clearSession();
+      rethrow;
+    }
+  }
+
   void _applyUser(AuthUser user) {
     _user = user;
     _set(switch (user.status) {
