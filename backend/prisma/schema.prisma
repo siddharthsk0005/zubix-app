@@ -50,7 +50,8 @@ enum CouponStatus {
 model User {
   id         String        @id @default(uuid())
   phone      String?       @unique
-  email      String?       @unique
+  email        String?       @unique
+  passwordHash String?
   name       String?
   role       Role          @default(USER)
   status     AccountStatus @default(PENDING)

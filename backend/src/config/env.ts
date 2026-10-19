@@ -15,6 +15,9 @@ const envSchema = z
       .default('false')
       .transform((value) => value === 'true'),
     DEMO_OTP_CODE: z.string().regex(/^\d{4,6}$/).default('9001'),
+    SUPER_ADMIN_PHONE: z.string().regex(/^\+?\d{8,15}$/).optional(),
+    SUPER_ADMIN_EMAIL: z.string().email().optional(),
+    SUPER_ADMIN_PASSWORD: z.string().min(12).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.DEMO_OTP_ENABLED) {

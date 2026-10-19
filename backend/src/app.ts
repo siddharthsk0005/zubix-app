@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { corsOrigins } from './config/env';
 import { authRouter } from './routes/auth';
+import { adminAuthRouter } from './routes/admin-auth';
+import { adminRouter } from './routes/admin';
 import { errorHandler, notFound } from './middleware/errors';
 
 export const app = express();
@@ -25,6 +27,8 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/admin/auth', adminAuthRouter);
+app.use('/admin', adminRouter);
 
 app.use(notFound);
 app.use(errorHandler);
