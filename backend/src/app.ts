@@ -4,6 +4,8 @@ import { corsOrigins } from './config/env';
 import { authRouter } from './routes/auth';
 import { adminAuthRouter } from './routes/admin-auth';
 import { adminRouter } from './routes/admin';
+import { brandsRouter } from './routes/brands';
+import { categoriesRouter } from './routes/categories';
 import { errorHandler, notFound } from './middleware/errors';
 
 export const app = express();
@@ -29,6 +31,8 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRouter);
 app.use('/admin/auth', adminAuthRouter);
 app.use('/admin', adminRouter);
+app.use('/brands', brandsRouter);
+app.use('/categories', categoriesRouter);
 
 app.use(notFound);
 app.use(errorHandler);

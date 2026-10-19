@@ -100,6 +100,11 @@ adminRouter.post('/brands/:id/review', async (req, res, next) => {
         where: { id },
         data: { status, reviewNote: note ?? null, reviewedAt: new Date() },
       });
+      // The owner account mirrors the brand decision so brand sessions pass the approval check.
+      await tx.user.update({
+        where: { id: updated.ownerId },
+        data: { status, reviewNote: note ?? null, reviewedAt: new Date() },
+      });
       await tx.auditLog.create({
         data: {
           actorId: req.auth!.id,
@@ -112,6 +117,60 @@ adminRouter.post('/brands/:id/review', async (req, res, next) => {
       return updated;
     });
     res.json({ brand });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get('/sessions', async (req, res, next) => {
+  try {
+    const status = z.enum(['REQUESTED', 'APPROVED', 'REJECTED', 'LIVE', 'ENDED', 'CANCELLED']).optional().parse(req.query.status);
+    const sessions = await prisma.session.findMany({
+      where: status ? { status } : {},
+      orderBy: { startsAt: 'desc' },
+      take: 100,
+      include: {
+        brand: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true } },
+      },
+    });
+    res.json({ sessions });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post('/sessions/:id/review', async (req, res, next) => {
+  try {
+    const id = idSchema.parse(req.params.id);
+    const { decision, note } = reviewSchema.parse(req.body);
+    const status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+
+    const session = await prisma.$transaction(async (tx) => {
+      const existing = await tx.session.findUnique({ where: { id }, select: { id: true, status: true } });
+      if (!existing) {
+        throw new AppError(404, 'NOT_FOUND', 'Session not found');
+      }
+      if (existing.status !== 'REQUESTED') {
+        throw new AppError(409, 'INVALID_STATE', 'Only requested sessions can be reviewed');
+      }
+      const updated = await tx.session.update({
+        where: { id },
+        data: { status, reviewNote: note ?? null },
+        include: { brand: { select: { id: true, name: true } } },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: req.auth!.id,
+          action: `SESSION_${decision}`,
+          entityType: 'Session',
+          entityId: id,
+          metadata: { note: note ?? null },
+        },
+      });
+      return updated;
+    });
+    res.json({ session });
   } catch (error) {
     next(error);
   }
