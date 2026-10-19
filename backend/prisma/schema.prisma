@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  BRAND
+  ADMIN
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BrandKind {
+  ONLINE
+  LOCAL_STORE
+}
+
+enum BrandStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SessionStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum CouponStatus {
+  AVAILABLE
+  CLAIMED
+  REDEEMED
+  EXPIRED
+}
+
+model User {
+  id         String        @id @default(uuid())
+  phone      String?       @unique
+  email      String?       @unique
+  name       String?
+  role       Role          @default(USER)
+  status     AccountStatus @default(PENDING)
+  reviewNote String?
+  reviewedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  brand      Brand?
+  coupons    Coupon[]      @relation("CouponClaimedBy")
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  name         String
+  slug         String    @unique
+  isActive     Boolean   @default(true)
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  brands       Brand[]
+  sessions     Session[]
+}
+
+model Brand {
+  id                String      @id @default(uuid())
+  ownerId           String      @unique
+  owner             User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name              String
+  founderName       String
+  kind              BrandKind
+  categoryId        String
+  category          Category    @relation(fields: [categoryId], references: [id])
+  logoUrl           String?
+  websiteUrl        String?
+  socialLinks       Json        @default("{}")
+  gstin             String?
+  registeredAddress String?
+  latitude          Float?
+  longitude         Float?
+  radiusMeters      Int?
+  status            BrandStatus @default(PENDING)
+  reviewNote        String?
+  reviewedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  sessions          Session[]
+
+  @@index([status])
+  @@index([latitude, longitude])
+}
+
+model Session {
+  id              String        @id @default(uuid())
+  brandId         String
+  brand           Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id])
+  title           String
+  createdByTag    String
+  discountPercent Int
+  couponCount     Int
+  status          SessionStatus @default(REQUESTED)
+  startsAt        DateTime
+  endsAt          DateTime
+  waitingSeconds  Int           @default(30)
+  couponExpiresAt DateTime
+  reviewNote      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  coupons         Coupon[]
+
+  @@index([status, startsAt])
+  @@index([categoryId, startsAt])
+}
+
+model Coupon {
+  id         String       @id @default(uuid())
+  code       String       @unique
+  sessionId  String
+  session    Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status     CouponStatus @default(AVAILABLE)
+  userId     String?
+  claimedBy  User?        @relation("CouponClaimedBy", fields: [userId], references: [id], onDelete: SetNull)
+  claimedAt  DateTime?
+  redeemedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime     @default(now())
+
+  // A user can hold at most one coupon per session.
+  @@unique([sessionId, userId])
+  @@index([sessionId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}

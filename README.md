@@ -14,23 +14,39 @@ Zubix is a luxury commerce and interactive discovery platform. It connects D2C o
 - Node.js, Express, TypeScript, and Prisma for the backend
 - PostgreSQL (Supabase) for data
 
+## Repository layout
+
+- `apps/mobile/`: Flutter app for shoppers (Android and iOS)
+- `apps/web/`: Flutter Web app for the brand dashboard and admin panel
+- `backend/`: Express API with Prisma schema and migrations
+- `.github/workflows/ci.yml`: CI for backend and both Flutter apps
+
 ## Status
 
-Rewrite in progress. The previous prototype is archived in the `zubix` repository.
+Phase 1 (foundations) in progress: project scaffolding, Prisma schema, OTP auth (demo code), and role middleware. The previous prototype is archived in the `zubix` repository.
 
 ## Local development
 
 ```bash
 # Backend
 cd backend
-cp .env.example .env   # fill in DATABASE_URL and DIRECT_URL
+cp .env.example .env   # fill in DATABASE_URL, DIRECT_URL, and JWT_SECRET
 npm install
-npm run dev
+npm run prisma:generate
+npm run dev            # http://localhost:4000/health
 
-# Client
+# Mobile app
+cd apps/mobile
+flutter pub get
+flutter run
+
+# Web app (brand dashboard and admin panel)
+cd apps/web
 flutter pub get
 flutter run -d chrome --web-port=8080
 ```
+
+Demo OTP: set `DEMO_OTP_ENABLED=true` and use code `9001`. This is refused when `NODE_ENV=production`.
 
 ## Quality gates
 
