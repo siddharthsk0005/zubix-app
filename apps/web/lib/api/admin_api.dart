@@ -21,6 +21,12 @@ class AdminApi {
   Future<void> reviewBrand(String token, String id, {required bool approve, String? note}) =>
       _review('/admin/brands/$id/review', token, approve, note);
 
+  Future<List<Map<String, dynamic>>> listSessions(String token, {String? status}) =>
+      _list('/admin/sessions', 'sessions', token, status);
+
+  Future<void> reviewSession(String token, String id, {required bool approve, String? note}) =>
+      _review('/admin/sessions/$id/review', token, approve, note);
+
   Future<List<Map<String, dynamic>>> listCategories(String token) =>
       _list('/admin/categories', 'categories', token, null);
 

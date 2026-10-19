@@ -14,20 +14,32 @@ class ReviewQueue extends StatefulWidget {
     required this.review,
     required this.labelOf,
     required this.detailOf,
+    this.statuses = defaultStatuses,
+    this.pendingStatus = 'PENDING',
   });
+
+  static const defaultStatuses = [
+    (value: 'PENDING', label: 'Pending'),
+    (value: 'APPROVED', label: 'Approved'),
+    (value: 'REJECTED', label: 'Rejected'),
+  ];
 
   final String title;
   final LoadRows load;
   final ReviewRow review;
   final String Function(Map<String, dynamic> row) labelOf;
   final String Function(Map<String, dynamic> row) detailOf;
+  final List<({String value, String label})> statuses;
+
+  /// Rows in this status show approve and reject actions.
+  final String pendingStatus;
 
   @override
   State<ReviewQueue> createState() => _ReviewQueueState();
 }
 
 class _ReviewQueueState extends State<ReviewQueue> {
-  String _status = 'PENDING';
+  late String _status;
   List<Map<String, dynamic>> _rows = [];
   bool _loading = true;
   String? _error;
@@ -35,6 +47,7 @@ class _ReviewQueueState extends State<ReviewQueue> {
   @override
   void initState() {
     super.initState();
+    _status = widget.pendingStatus;
     _refresh();
   }
 
@@ -91,10 +104,9 @@ class _ReviewQueueState extends State<ReviewQueue> {
           ),
           const SizedBox(height: 12),
           SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'PENDING', label: Text('Pending')),
-              ButtonSegment(value: 'APPROVED', label: Text('Approved')),
-              ButtonSegment(value: 'REJECTED', label: Text('Rejected')),
+            segments: [
+              for (final s in widget.statuses)
+                ButtonSegment(value: s.value, label: Text(s.label)),
             ],
             selected: {_status},
             onSelectionChanged: (s) {
@@ -128,7 +140,7 @@ class _ReviewQueueState extends State<ReviewQueue> {
                 .join('\n'),
           ),
           isThreeLine: note != null && note.isNotEmpty,
-          trailing: _status == 'PENDING'
+          trailing: _status == widget.pendingStatus
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

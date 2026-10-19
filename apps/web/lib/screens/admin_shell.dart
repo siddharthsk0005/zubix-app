@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/admin_api.dart';
 import '../auth/admin_session.dart';
+import '../util/format.dart';
 import 'categories_screen.dart';
 import 'review_queue.dart';
 
@@ -41,6 +42,27 @@ class _AdminShellState extends State<AdminShell> {
         labelOf: (row) => (row['name'] as String?) ?? '-',
         detailOf: (row) => (row['category'] as Map<String, dynamic>?)?['name'] as String? ?? '',
       ),
+      ReviewQueue(
+        key: const ValueKey('sessions'),
+        title: 'Coupon sessions',
+        statuses: const [
+          (value: 'REQUESTED', label: 'Requested'),
+          (value: 'APPROVED', label: 'Approved'),
+          (value: 'REJECTED', label: 'Rejected'),
+        ],
+        pendingStatus: 'REQUESTED',
+        load: (status) => widget.api.listSessions(token, status: status),
+        review: (id, {required approve, note}) =>
+            widget.api.reviewSession(token, id, approve: approve, note: note),
+        labelOf: (row) => (row['title'] as String?) ?? '-',
+        detailOf: (row) {
+          final brand = (row['brand'] as Map<String, dynamic>?)?['name'] as String? ?? '-';
+          final start = DateTime.parse(row['startsAt'] as String);
+          final end = DateTime.parse(row['endsAt'] as String);
+          return '$brand · ${formatDateTime(start)} to ${formatDateTime(end)} · '
+              '${row['discountPercent']}% · ${row['couponCount']} coupons';
+        },
+      ),
       CategoriesScreen(api: widget.api, token: token),
     ];
 
@@ -71,6 +93,7 @@ class _AdminShellState extends State<AdminShell> {
             destinations: const [
               NavigationRailDestination(icon: Icon(Icons.people_outline), label: Text('Users')),
               NavigationRailDestination(icon: Icon(Icons.storefront_outlined), label: Text('Brands')),
+              NavigationRailDestination(icon: Icon(Icons.event_outlined), label: Text('Sessions')),
               NavigationRailDestination(icon: Icon(Icons.category_outlined), label: Text('Categories')),
             ],
           ),
