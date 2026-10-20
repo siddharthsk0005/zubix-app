@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../shopper/location.dart';
 import '../theme/app_theme.dart';
 
 /// Keeps auth screens at a readable width on tablets and web.
@@ -79,5 +80,6 @@ class SocialSignInButtons extends StatelessWidget {
 
 String messageFor(Object error) {
   if (error is ApiException) return error.message;
+  if (error is LocationUnavailable) return LocationUnavailable.message;
   return 'Something went wrong. Please try again.';
 }

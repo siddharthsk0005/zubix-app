@@ -29,8 +29,9 @@ class _AdminShellState extends State<AdminShell> {
         key: const ValueKey('users'),
         title: 'User registrations',
         load: (status) => widget.api.listUsers(token, status: status),
-        review: (id, {required approve, note}) =>
-            widget.api.reviewUser(token, id, approve: approve, note: note),
+        review:
+            (id, {required approve, note, waitingSeconds, couponExpiresAt}) =>
+                widget.api.reviewUser(token, id, approve: approve, note: note),
         labelOf: (row) =>
             (row['name'] as String?) ?? (row['phone'] as String? ?? '-'),
         detailOf: (row) =>
@@ -40,8 +41,9 @@ class _AdminShellState extends State<AdminShell> {
         key: const ValueKey('brands'),
         title: 'Brand registrations',
         load: (status) => widget.api.listBrands(token, status: status),
-        review: (id, {required approve, note}) =>
-            widget.api.reviewBrand(token, id, approve: approve, note: note),
+        review:
+            (id, {required approve, note, waitingSeconds, couponExpiresAt}) =>
+                widget.api.reviewBrand(token, id, approve: approve, note: note),
         labelOf: (row) => (row['name'] as String?) ?? '-',
         detailOf: (row) =>
             (row['category'] as Map<String, dynamic>?)?['name'] as String? ??
@@ -56,9 +58,18 @@ class _AdminShellState extends State<AdminShell> {
           (value: 'REJECTED', label: 'Rejected'),
         ],
         pendingStatus: 'REQUESTED',
+        approvalOptions: true,
         load: (status) => widget.api.listSessions(token, status: status),
-        review: (id, {required approve, note}) =>
-            widget.api.reviewSession(token, id, approve: approve, note: note),
+        review:
+            (id, {required approve, note, waitingSeconds, couponExpiresAt}) =>
+                widget.api.reviewSession(
+                  token,
+                  id,
+                  approve: approve,
+                  note: note,
+                  waitingSeconds: waitingSeconds,
+                  couponExpiresAt: couponExpiresAt,
+                ),
         labelOf: (row) => (row['title'] as String?) ?? '-',
         detailOf: (row) {
           final brand =

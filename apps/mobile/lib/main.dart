@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'api/api_client.dart';
 import 'auth/auth_state.dart';
 import 'auth/token_store.dart';
-import 'screens/home_screen.dart';
 import 'screens/pending_screen.dart';
 import 'screens/phone_screen.dart';
+import 'screens/shopper_shell.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -28,8 +28,8 @@ class _ZubixAppState extends State<ZubixApp> {
   @override
   void initState() {
     super.initState();
-    _auth = widget.auth ??
-        AuthState(api: ApiClient(), tokenStore: TokenStore());
+    _auth =
+        widget.auth ?? AuthState(api: ApiClient(), tokenStore: TokenStore());
     _auth.restore();
   }
 
@@ -55,12 +55,12 @@ class _ZubixAppState extends State<ZubixApp> {
   Widget _screenFor(AuthState auth) {
     return switch (auth.status) {
       AuthStatus.unknown => const Scaffold(
-          body: Center(child: CircularProgressIndicator(color: AppColors.black)),
-        ),
+        body: Center(child: CircularProgressIndicator(color: AppColors.black)),
+      ),
       AuthStatus.signedOut => PhoneScreen(auth: auth),
       AuthStatus.pending => PendingScreen(auth: auth, rejected: false),
       AuthStatus.rejected => PendingScreen(auth: auth, rejected: true),
-      AuthStatus.approved => HomeScreen(auth: auth),
+      AuthStatus.approved => ShopperShell(auth: auth),
     };
   }
 }

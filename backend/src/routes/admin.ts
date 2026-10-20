@@ -13,11 +13,20 @@ const reviewSchema = z
   .object({
     decision: z.enum(['APPROVE', 'REJECT']),
     note: z.string().trim().max(500).optional(),
+    // Per-session overrides, applied only when approving.
+    waitingSeconds: z.number().int().min(10).max(120).optional(),
+    couponExpiresAt: z.coerce.date().optional(),
   })
   .refine((value) => value.decision !== 'REJECT' || (value.note && value.note.length > 0), {
     message: 'A note is required when rejecting',
     path: ['note'],
-  });
+  })
+  .refine(
+    (value) =>
+      value.decision === 'APPROVE' ||
+      (value.waitingSeconds === undefined && value.couponExpiresAt === undefined),
+    { message: 'Timing overrides can only be set when approving', path: ['decision'] },
+  );
 
 const statusFilter = z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional();
 const idSchema = z.string().uuid();
@@ -145,7 +154,7 @@ adminRouter.get('/sessions', async (req, res, next) => {
 adminRouter.post('/sessions/:id/review', async (req, res, next) => {
   try {
     const id = idSchema.parse(req.params.id);
-    const { decision, note } = reviewSchema.parse(req.body);
+    const { decision, note, waitingSeconds, couponExpiresAt } = reviewSchema.parse(req.body);
     const status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
 
     const session = await prisma.$transaction(async (tx) => {
@@ -159,9 +168,18 @@ adminRouter.post('/sessions/:id/review', async (req, res, next) => {
       if (existing.status !== 'REQUESTED') {
         throw new AppError(409, 'INVALID_STATE', 'Only requested sessions can be reviewed');
       }
+      const expiresAt = couponExpiresAt ?? existing.couponExpiresAt;
+      if (decision === 'APPROVE' && expiresAt.getTime() <= Date.now()) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Coupon expiry must be in the future');
+      }
       const updated = await tx.session.update({
         where: { id },
-        data: { status, reviewNote: note ?? null },
+        data: {
+          status,
+          reviewNote: note ?? null,
+          ...(decision === 'APPROVE' && waitingSeconds !== undefined ? { waitingSeconds } : {}),
+          ...(decision === 'APPROVE' && couponExpiresAt ? { couponExpiresAt } : {}),
+        },
         include: { brand: { select: { id: true, name: true } } },
       });
       if (decision === 'APPROVE') {
@@ -170,7 +188,7 @@ adminRouter.post('/sessions/:id/review', async (req, res, next) => {
           data: generateCouponCodes(existing.couponCount).map((code) => ({
             code,
             sessionId: id,
-            expiresAt: existing.couponExpiresAt,
+            expiresAt,
           })),
         });
       }

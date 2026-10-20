@@ -32,6 +32,7 @@ class ShopSession {
     required this.waitingSeconds,
     required this.couponsLeft,
     required this.brandName,
+    this.brandKind = 'ONLINE',
     this.createdByTag,
     this.categoryName,
     this.myCoupon,
@@ -55,6 +56,7 @@ class ShopSession {
       waitingSeconds: (json['waitingSeconds'] as num).toInt(),
       couponsLeft: (json['couponsLeft'] as num).toInt(),
       brandName: brand['name'] as String,
+      brandKind: brand['kind'] as String? ?? 'ONLINE',
       categoryName: category?['name'] as String?,
       myCoupon: coupon == null ? null : Coupon.fromJson(coupon),
       claimReadyAt: readyAt == null ? null : DateTime.parse(readyAt),
@@ -72,6 +74,9 @@ class ShopSession {
   final int waitingSeconds;
   final int couponsLeft;
   final String brandName;
+
+  /// `ONLINE` or `LOCAL_STORE`. Local stores are the Nearby tab.
+  final String brandKind;
   final String? categoryName;
   final Coupon? myCoupon;
   final DateTime? claimReadyAt;

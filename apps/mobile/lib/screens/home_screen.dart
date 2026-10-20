@@ -2,22 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_state.dart';
 import '../shopper/format.dart';
+import '../shopper/location.dart';
 import '../shopper/shopper_api.dart';
 import '../shopper/shopper_models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/centered_content.dart';
 import 'auth_widgets.dart';
-import 'my_coupons_screen.dart';
 import 'session_detail_screen.dart';
 
-/// Live and upcoming sessions for approved shoppers.
+/// Sessions for the Brands tab (online) or the Nearby tab (stores within radius).
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.auth, this.api});
+  const HomeScreen({
+    super.key,
+    required this.auth,
+    this.api,
+    this.nearby = false,
+    this.location,
+  });
 
   final AuthState auth;
 
   /// Injected in tests. Defaults to the signed-in user's API.
   final ShopperApi? api;
+
+  /// Shows local stores near the shopper instead of online brands.
+  final bool nearby;
+
+  /// Injected in tests. Defaults to the device location.
+  final LocationSource? location;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -26,10 +38,18 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final ShopperApi _api =
       widget.api ?? ShopperApi(widget.auth.authedRequest);
-  late Future<SessionList> _future = _api.listSessions();
+  late final LocationSource _location =
+      widget.location ?? GeolocatorLocationSource();
+  late Future<SessionList> _future = _load();
+
+  Future<SessionList> _load() async {
+    if (!widget.nearby) return _api.listSessions(kind: 'ONLINE');
+    final location = await _location.current();
+    return _api.listSessions(kind: 'LOCAL_STORE', location: location);
+  }
 
   Future<void> _refresh() async {
-    setState(() => _future = _api.listSessions());
+    setState(() => _future = _load());
     try {
       await _future;
     } catch (_) {
@@ -48,31 +68,10 @@ class _HomeScreenState extends State<HomeScreen> {
     await _refresh();
   }
 
-  Future<void> _openCoupons() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => MyCouponsScreen(api: _api)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Zubix'),
-        actions: [
-          IconButton(
-            tooltip: 'My coupons',
-            onPressed: _openCoupons,
-            icon: const Icon(Icons.confirmation_number_outlined),
-          ),
-          IconButton(
-            tooltip: 'Sign out',
-            onPressed: widget.auth.signOut,
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(widget.nearby ? 'Nearby' : 'Brands')),
       body: SafeArea(
         child: CenteredContent(
           child: RefreshIndicator(
@@ -104,8 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 final sessions = snapshot.data!.sessions;
                 if (sessions.isEmpty) {
                   return _message(
-                    const Text(
-                      'No live sessions right now. Pull down to refresh.',
+                    Text(
+                      widget.nearby
+                          ? 'No nearby coupons right now. Pull down to refresh.'
+                          : 'No live brand sessions right now. Pull down to refresh.',
                       textAlign: TextAlign.center,
                     ),
                   );

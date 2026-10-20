@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../util/format.dart';
 import '../widgets/responsive.dart';
 
 typedef LoadRows = Future<List<Map<String, dynamic>>> Function(String? status);
 typedef ReviewRow =
-    Future<void> Function(String id, {required bool approve, String? note});
+    Future<void> Function(
+      String id, {
+      required bool approve,
+      String? note,
+      int? waitingSeconds,
+      DateTime? couponExpiresAt,
+    });
 
 /// Pending, approved and rejected registrations, with approve and reject actions.
 class ReviewQueue extends StatefulWidget {
@@ -18,6 +25,7 @@ class ReviewQueue extends StatefulWidget {
     required this.detailOf,
     this.statuses = defaultStatuses,
     this.pendingStatus = 'PENDING',
+    this.approvalOptions = false,
   });
 
   static const defaultStatuses = [
@@ -35,6 +43,9 @@ class ReviewQueue extends StatefulWidget {
 
   /// Rows in this status show approve and reject actions.
   final String pendingStatus;
+
+  /// Approving offers optional waiting time and coupon expiry overrides (sessions only).
+  final bool approvalOptions;
 
   @override
   State<ReviewQueue> createState() => _ReviewQueueState();
@@ -71,7 +82,7 @@ class _ReviewQueueState extends State<ReviewQueue> {
     Map<String, dynamic> row, {
     required bool approve,
   }) async {
-    final note = await showDialog<String?>(
+    final decision = await showDialog<_Decision>(
       context: context,
       builder: (_) => _NoteDialog(
         title: approve
@@ -79,15 +90,18 @@ class _ReviewQueueState extends State<ReviewQueue> {
             : 'Reject ${widget.labelOf(row)}?',
         noteRequired: !approve,
         actionLabel: approve ? 'Approve' : 'Reject',
+        approvalOptions: widget.approvalOptions && approve,
       ),
     );
-    if (note == null) return; // Cancelled.
+    if (decision == null) return; // Cancelled.
 
     try {
       await widget.review(
         row['id'] as String,
         approve: approve,
-        note: note.isEmpty ? null : note,
+        note: decision.note.isEmpty ? null : decision.note,
+        waitingSeconds: decision.waitingSeconds,
+        couponExpiresAt: decision.couponExpiresAt,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,17 +199,32 @@ class _ReviewQueueState extends State<ReviewQueue> {
   }
 }
 
-/// Returns the entered note, or null if cancelled. Rejections need a non-empty note.
+/// What the admin entered. [note] is empty when none was given.
+class _Decision {
+  const _Decision({
+    required this.note,
+    this.waitingSeconds,
+    this.couponExpiresAt,
+  });
+
+  final String note;
+  final int? waitingSeconds;
+  final DateTime? couponExpiresAt;
+}
+
+/// Returns the admin's decision, or null if cancelled. Rejections need a non-empty note.
 class _NoteDialog extends StatefulWidget {
   const _NoteDialog({
     required this.title,
     required this.noteRequired,
     required this.actionLabel,
+    this.approvalOptions = false,
   });
 
   final String title;
   final bool noteRequired;
   final String actionLabel;
+  final bool approvalOptions;
 
   @override
   State<_NoteDialog> createState() => _NoteDialogState();
@@ -203,12 +232,43 @@ class _NoteDialog extends StatefulWidget {
 
 class _NoteDialogState extends State<_NoteDialog> {
   final _controller = TextEditingController();
+  final _waitingController = TextEditingController();
+  DateTime? _expiresAt;
   String? _error;
+  String? _waitingError;
 
   @override
   void dispose() {
     _controller.dispose();
+    _waitingController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickExpiry() async {
+    final now = DateTime.now();
+    final start = _expiresAt ?? now;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: start,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(start),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _expiresAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+      _error = null;
+    });
   }
 
   void _submit() {
@@ -217,7 +277,26 @@ class _NoteDialogState extends State<_NoteDialog> {
       setState(() => _error = 'A note is required when rejecting');
       return;
     }
-    Navigator.of(context).pop(note);
+
+    int? waiting;
+    final waitingText = _waitingController.text.trim();
+    if (waitingText.isNotEmpty) {
+      waiting = int.tryParse(waitingText);
+      if (waiting == null || waiting < 10 || waiting > 120) {
+        setState(() => _waitingError = 'Enter 10 to 120 seconds');
+        return;
+      }
+    }
+
+    final expiry = _expiresAt;
+    if (expiry != null && !expiry.isAfter(DateTime.now())) {
+      setState(() => _error = 'Coupon expiry must be in the future');
+      return;
+    }
+
+    Navigator.of(context).pop(
+      _Decision(note: note, waitingSeconds: waiting, couponExpiresAt: expiry),
+    );
   }
 
   @override
@@ -226,17 +305,58 @@ class _NoteDialogState extends State<_NoteDialog> {
       title: Text(widget.title),
       content: SizedBox(
         width: dialogContentWidth(context),
-        child: TextField(
-          controller: _controller,
-          maxLines: 3,
-          maxLength: 500,
-          decoration: InputDecoration(
-            labelText: widget.noteRequired
-                ? 'Reason (required)'
-                : 'Note (optional)',
-            errorText: _error,
-            border: const OutlineInputBorder(),
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _controller,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: InputDecoration(
+                labelText: widget.noteRequired
+                    ? 'Reason (required)'
+                    : 'Note (optional)',
+                errorText: _error,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            if (widget.approvalOptions) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _waitingController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Waiting seconds (optional, 10 to 120)',
+                  helperText: 'Leave blank to keep the session setting',
+                  errorText: _waitingError,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _expiresAt == null
+                          ? 'Coupon expiry: keep the session setting'
+                          : 'Coupon expiry: ${formatDateTime(_expiresAt!)}',
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _pickExpiry,
+                    child: Text(_expiresAt == null ? 'Set' : 'Change'),
+                  ),
+                  if (_expiresAt != null)
+                    IconButton(
+                      tooltip: 'Clear',
+                      onPressed: () => setState(() => _expiresAt = null),
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
       actions: [

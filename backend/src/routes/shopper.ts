@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/errors';
+import { distanceMeters } from '../lib/geo';
 import { displayCouponStatus, syncSessionStatuses } from '../lib/sessions';
 import { requireApproved, requireAuth, requireRole } from '../middleware/auth';
 
@@ -65,22 +66,61 @@ async function withShopperState<T extends { id: string; couponExpiresAt: Date }>
   });
 }
 
-/** Live sessions and approved sessions that have not started yet. */
+const listQuerySchema = z
+  .object({
+    kind: z.enum(['ONLINE', 'LOCAL_STORE']).optional(),
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+  })
+  .refine((value) => value.kind !== 'LOCAL_STORE' || (value.latitude !== undefined && value.longitude !== undefined), {
+    message: 'Location is required for nearby sessions',
+    path: ['latitude'],
+  });
+
+/** Live sessions and approved sessions that have not started yet.
+ * `kind=ONLINE` lists brand sessions, `kind=LOCAL_STORE` lists nearby store sessions within each store's radius.
+ */
 sessionsRouter.get('/', async (req, res, next) => {
   try {
+    const query = listQuerySchema.parse(req.query);
     const now = new Date();
     await syncSessionStatuses(now);
     const sessions = await prisma.session.findMany({
-      where: { OR: [{ status: 'LIVE' }, { status: 'APPROVED', startsAt: { gt: now } }] },
+      where: {
+        AND: [
+          { OR: [{ status: 'LIVE' }, { status: 'APPROVED', startsAt: { gt: now } }] },
+          ...(query.kind ? [{ brand: { kind: query.kind } }] : []),
+        ],
+      },
       orderBy: { startsAt: 'asc' },
-      take: 100,
-      include: sessionInclude,
+      include: {
+        ...sessionInclude,
+        brand: { select: { id: true, name: true, kind: true, latitude: true, longitude: true, radiusMeters: true } },
+      },
     });
-    res.json({ serverTime: now, sessions: await withShopperState(sessions, req.auth!.id, now) });
+
+    let visible = sessions;
+    if (query.kind === 'LOCAL_STORE') {
+      visible = sessions.filter(
+        (session) =>
+          session.brand.latitude !== null &&
+          session.brand.longitude !== null &&
+          session.brand.radiusMeters !== null &&
+          distanceMeters(query.latitude!, query.longitude!, session.brand.latitude, session.brand.longitude) <=
+            session.brand.radiusMeters,
+      );
+    }
+
+    const page = visible.slice(0, 100).map(({ brand, ...session }) => ({
+      ...session,
+      brand: { id: brand.id, name: brand.name, kind: brand.kind },
+    }));
+    res.json({ serverTime: now, sessions: await withShopperState(page, req.auth!.id, now) });
   } catch (error) {
     next(error);
   }
 });
+
 
 sessionsRouter.get('/:id', async (req, res, next) => {
   try {
@@ -98,7 +138,9 @@ sessionsRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-/** Starts the countdown. Calling it again returns the same ready time. */
+/** Starts the countdown. Calling it again returns the same ready time.
+ * Nearby (local store) sessions also need the shopper's location inside the store's radius.
+ */
 sessionsRouter.post('/:id/claim/start', async (req, res, next) => {
   try {
     const id = idSchema.parse(req.params.id);
@@ -108,7 +150,11 @@ sessionsRouter.post('/:id/claim/start', async (req, res, next) => {
 
     const session = await prisma.session.findUnique({
       where: { id },
-      select: { status: true, waitingSeconds: true, couponExpiresAt: true },
+      select: {
+        status: true,
+        waitingSeconds: true,
+        couponExpiresAt: true,
+      },
     });
     if (!session) throw new AppError(404, 'NOT_FOUND', 'Session not found');
     assertClaimable(session.status, session.couponExpiresAt, now);

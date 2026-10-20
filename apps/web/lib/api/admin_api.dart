@@ -6,26 +6,55 @@ class AdminApi {
 
   final ApiClient _client;
 
-  Future<Map<String, dynamic>> login(String email, String password) =>
-      _client.post('/admin/auth/login', body: {'email': email, 'password': password});
+  Future<Map<String, dynamic>> login(String email, String password) => _client
+      .post('/admin/auth/login', body: {'email': email, 'password': password});
 
-  Future<List<Map<String, dynamic>>> listUsers(String token, {String? status}) =>
-      _list('/admin/users', 'users', token, status);
+  Future<List<Map<String, dynamic>>> listUsers(
+    String token, {
+    String? status,
+  }) => _list('/admin/users', 'users', token, status);
 
-  Future<void> reviewUser(String token, String id, {required bool approve, String? note}) =>
-      _review('/admin/users/$id/review', token, approve, note);
+  Future<void> reviewUser(
+    String token,
+    String id, {
+    required bool approve,
+    String? note,
+  }) => _review('/admin/users/$id/review', token, approve, note);
 
-  Future<List<Map<String, dynamic>>> listBrands(String token, {String? status}) =>
-      _list('/admin/brands', 'brands', token, status);
+  Future<List<Map<String, dynamic>>> listBrands(
+    String token, {
+    String? status,
+  }) => _list('/admin/brands', 'brands', token, status);
 
-  Future<void> reviewBrand(String token, String id, {required bool approve, String? note}) =>
-      _review('/admin/brands/$id/review', token, approve, note);
+  Future<void> reviewBrand(
+    String token,
+    String id, {
+    required bool approve,
+    String? note,
+  }) => _review('/admin/brands/$id/review', token, approve, note);
 
-  Future<List<Map<String, dynamic>>> listSessions(String token, {String? status}) =>
-      _list('/admin/sessions', 'sessions', token, status);
+  Future<List<Map<String, dynamic>>> listSessions(
+    String token, {
+    String? status,
+  }) => _list('/admin/sessions', 'sessions', token, status);
 
-  Future<void> reviewSession(String token, String id, {required bool approve, String? note}) =>
-      _review('/admin/sessions/$id/review', token, approve, note);
+  Future<void> reviewSession(
+    String token,
+    String id, {
+    required bool approve,
+    String? note,
+    int? waitingSeconds,
+    DateTime? couponExpiresAt,
+  }) => _client.post(
+    '/admin/sessions/$id/review',
+    token: token,
+    body: {
+      'decision': approve ? 'APPROVE' : 'REJECT',
+      'note': ?note,
+      'waitingSeconds': ?waitingSeconds,
+      'couponExpiresAt': ?couponExpiresAt?.toUtc().toIso8601String(),
+    },
+  );
 
   Future<List<Map<String, dynamic>>> listCategories(String token) =>
       _list('/admin/categories', 'categories', token, null);
@@ -33,12 +62,16 @@ class AdminApi {
   Future<void> createCategory(String token, String name) =>
       _client.post('/admin/categories', token: token, body: {'name': name});
 
-  Future<void> updateCategory(String token, String id, {String? name, bool? isActive}) =>
-      _client.patch(
-        '/admin/categories/$id',
-        token: token,
-        body: {'name': ?name, 'isActive': ?isActive},
-      );
+  Future<void> updateCategory(
+    String token,
+    String id, {
+    String? name,
+    bool? isActive,
+  }) => _client.patch(
+    '/admin/categories/$id',
+    token: token,
+    body: {'name': ?name, 'isActive': ?isActive},
+  );
 
   Future<void> reorderCategories(String token, List<String> ids) =>
       _client.put('/admin/categories/order', token: token, body: {'ids': ids});

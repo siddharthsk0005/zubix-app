@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Zubix uses your location to show nearby store coupons and to confirm you are at the store when you claim.</string>
 </dict>
 </plist>
