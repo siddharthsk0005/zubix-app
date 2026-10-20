@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/brand_api.dart';
 import '../util/format.dart';
+import '../widgets/responsive.dart';
 import '../widgets/status_chip.dart';
 
 /// Brand's coupon sessions. Requests are only allowed once the brand is approved.
@@ -49,7 +50,9 @@ class _BrandSessionsScreenState extends State<BrandSessionsScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _request() async {
@@ -86,8 +89,17 @@ class _BrandSessionsScreenState extends State<BrandSessionsScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Sessions', style: Theme.of(context).textTheme.headlineSmall)),
-              IconButton(tooltip: 'Refresh', onPressed: _refresh, icon: const Icon(Icons.refresh)),
+              Expanded(
+                child: Text(
+                  'Sessions',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh',
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh),
+              ),
               const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: widget.canRequest ? _request : null,
@@ -143,7 +155,10 @@ class _BrandSessionsScreenState extends State<BrandSessionsScreen> {
               StatusChip(status),
               if (cancellable) ...[
                 const SizedBox(width: 12),
-                TextButton(onPressed: () => _cancel(s), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => _cancel(s),
+                  child: const Text('Cancel'),
+                ),
               ],
             ],
           ),
@@ -219,7 +234,11 @@ class _RequestSessionDialogState extends State<_RequestSessionDialog> {
     });
   }
 
-  Widget _whenTile(String label, DateTime value, ValueChanged<DateTime> onChanged) {
+  Widget _whenTile(
+    String label,
+    DateTime value,
+    ValueChanged<DateTime> onChanged,
+  ) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(label),
@@ -237,7 +256,7 @@ class _RequestSessionDialogState extends State<_RequestSessionDialog> {
     return AlertDialog(
       title: const Text('Request a coupon session'),
       content: SizedBox(
-        width: 420,
+        width: dialogContentWidth(context, max: 420),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -247,47 +266,53 @@ class _RequestSessionDialogState extends State<_RequestSessionDialog> {
                 TextFormField(
                   controller: _title,
                   decoration: const InputDecoration(labelText: 'Session title'),
-                  validator: (v) => (v ?? '').trim().length < 3 ? 'Enter at least 3 characters' : null,
+                  validator: (v) => (v ?? '').trim().length < 3
+                      ? 'Enter at least 3 characters'
+                      : null,
                 ),
                 TextFormField(
                   controller: _tag,
-                  decoration: const InputDecoration(labelText: 'Label (e.g. Lunch)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Label (e.g. Lunch)',
+                  ),
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _discount,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Discount %'),
-                        validator: (v) {
-                          final n = int.tryParse((v ?? '').trim());
-                          return n == null || n < 1 || n > 90 ? '1 to 90' : null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _coupons,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Coupons'),
-                        validator: (v) {
-                          final n = int.tryParse((v ?? '').trim());
-                          return n == null || n < 1 ? 'At least 1' : null;
-                        },
-                      ),
-                    ),
-                  ],
+                TwoUp(
+                  first: TextFormField(
+                    controller: _discount,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Discount %'),
+                    validator: (v) {
+                      final n = int.tryParse((v ?? '').trim());
+                      return n == null || n < 1 || n > 90 ? '1 to 90' : null;
+                    },
+                  ),
+                  second: TextFormField(
+                    controller: _coupons,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Coupons'),
+                    validator: (v) {
+                      final n = int.tryParse((v ?? '').trim());
+                      return n == null || n < 1 ? 'At least 1' : null;
+                    },
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _whenTile('Starts', _startsAt, (v) => _startsAt = v),
                 _whenTile('Ends', _endsAt, (v) => _endsAt = v),
-                _whenTile('Coupons expire', _couponExpiresAt, (v) => _couponExpiresAt = v),
+                _whenTile(
+                  'Coupons expire',
+                  _couponExpiresAt,
+                  (v) => _couponExpiresAt = v,
+                ),
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -295,7 +320,10 @@ class _RequestSessionDialogState extends State<_RequestSessionDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         FilledButton(onPressed: _submit, child: const Text('Send request')),
       ],
     );

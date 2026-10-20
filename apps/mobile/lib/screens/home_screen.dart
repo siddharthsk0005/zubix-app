@@ -5,6 +5,7 @@ import '../shopper/format.dart';
 import '../shopper/shopper_api.dart';
 import '../shopper/shopper_models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/centered_content.dart';
 import 'auth_widgets.dart';
 import 'my_coupons_screen.dart';
 import 'session_detail_screen.dart';
@@ -23,7 +24,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final ShopperApi _api = widget.api ?? ShopperApi(widget.auth.authedRequest);
+  late final ShopperApi _api =
+      widget.api ?? ShopperApi(widget.auth.authedRequest);
   late Future<SessionList> _future = _api.listSessions();
 
   Future<void> _refresh() async {
@@ -72,49 +74,54 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.black,
-          onRefresh: _refresh,
-          child: FutureBuilder<SessionList>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return _message(
-                  const CircularProgressIndicator(color: AppColors.black),
-                );
-              }
-              if (snapshot.hasError) {
-                return _message(
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(messageFor(snapshot.error!)),
-                      const SizedBox(height: 12),
-                      OutlinedButton(onPressed: _refresh, child: const Text('Try again')),
-                    ],
+        child: CenteredContent(
+          child: RefreshIndicator(
+            color: AppColors.black,
+            onRefresh: _refresh,
+            child: FutureBuilder<SessionList>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return _message(
+                    const CircularProgressIndicator(color: AppColors.black),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return _message(
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(messageFor(snapshot.error!)),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: _refresh,
+                          child: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final sessions = snapshot.data!.sessions;
+                if (sessions.isEmpty) {
+                  return _message(
+                    const Text(
+                      'No live sessions right now. Pull down to refresh.',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: sessions.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) => _SessionCard(
+                    session: sessions[index],
+                    onTap: () => _open(sessions[index]),
                   ),
                 );
-              }
-              final sessions = snapshot.data!.sessions;
-              if (sessions.isEmpty) {
-                return _message(
-                  const Text(
-                    'No live sessions right now. Pull down to refresh.',
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: sessions.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) => _SessionCard(
-                  session: sessions[index],
-                  onTap: () => _open(sessions[index]),
-                ),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
@@ -128,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         SizedBox(
           height: 320,
-          child: Center(child: Padding(padding: const EdgeInsets.all(24), child: child)),
+          child: Center(
+            child: Padding(padding: const EdgeInsets.all(24), child: child),
+          ),
         ),
       ],
     );
@@ -156,14 +165,20 @@ class _SessionCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         onTap: onTap,
-        title: Text(session.title, style: Theme.of(context).textTheme.titleMedium),
+        title: Text(
+          session.title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text('${session.brandName} · $detail'),
         ),
         trailing: Text(
           '${session.discountPercent}% off',
-          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.black),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.black,
+          ),
         ),
       ),
     );

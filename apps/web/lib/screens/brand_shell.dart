@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../api/brand_api.dart';
 import '../auth/brand_session.dart';
 import '../theme/app_theme.dart';
+import '../widgets/dashboard_scaffold.dart';
 import '../widgets/status_chip.dart';
 import 'brand_profile_form.dart';
 import 'brand_sessions_screen.dart';
@@ -61,7 +62,9 @@ class _BrandShellState extends State<BrandShell> {
     final brand = await widget.api.updateProfile(_token, body);
     if (!mounted) return;
     setState(() => _brand = brand);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile saved')));
   }
 
   @override
@@ -79,7 +82,10 @@ class _BrandShellState extends State<BrandShell> {
               Text(_loadError ?? 'Could not load your brand.'),
               const SizedBox(height: 12),
               FilledButton(onPressed: _load, child: const Text('Try again')),
-              TextButton(onPressed: widget.session.end, child: const Text('Sign out')),
+              TextButton(
+                onPressed: widget.session.end,
+                child: const Text('Sign out'),
+              ),
             ],
           ),
         ),
@@ -95,7 +101,10 @@ class _BrandShellState extends State<BrandShell> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Brand profile', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                'Brand profile',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 16),
               BrandProfileForm(
                 categories: _categories,
@@ -114,40 +123,17 @@ class _BrandShellState extends State<BrandShell> {
       ),
     ];
 
-    return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _index,
-            labelType: NavigationRailLabelType.all,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(widget.session.email ?? '', style: Theme.of(context).textTheme.labelSmall),
-            ),
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: IconButton(
-                    tooltip: 'Sign out',
-                    icon: const Icon(Icons.logout),
-                    onPressed: widget.session.end,
-                  ),
-                ),
-              ),
-            ),
-            destinations: const [
-              NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), label: Text('Dashboard')),
-              NavigationRailDestination(icon: Icon(Icons.storefront_outlined), label: Text('Profile')),
-              NavigationRailDestination(icon: Icon(Icons.event_outlined), label: Text('Sessions')),
-            ],
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(child: sections[_index]),
-        ],
-      ),
+    return DashboardScaffold(
+      destinations: const [
+        DashboardDestination(Icons.dashboard_outlined, 'Dashboard'),
+        DashboardDestination(Icons.storefront_outlined, 'Profile'),
+        DashboardDestination(Icons.event_outlined, 'Sessions'),
+      ],
+      selectedIndex: _index,
+      onSelect: (i) => setState(() => _index = i),
+      email: widget.session.email ?? '',
+      onSignOut: widget.session.end,
+      body: sections[_index],
     );
   }
 }
@@ -165,17 +151,21 @@ class _Dashboard extends StatelessWidget {
     final note = brand['reviewNote'] as String?;
     final reason = (note == null || note.isEmpty) ? 'no reason given' : note;
     final (heading, message) = switch (status) {
-      'APPROVED' => ('You are approved', 'You can now request coupon sessions from the Sessions tab.'),
+      'APPROVED' => (
+        'You are approved',
+        'You can now request coupon sessions from the Sessions tab.',
+      ),
       'REJECTED' => (
-          'Registration rejected',
-          'Reason: $reason.\nUpdate your details under Profile. Changing your GSTIN sends your brand back for review.',
-        ),
+        'Registration rejected',
+        'Reason: $reason.\nUpdate your details under Profile. Changing your GSTIN sends your brand back for review.',
+      ),
       _ => (
-          'Under review',
-          'Our team is checking your GSTIN and details. You can complete your profile now. Session requests open after approval.',
-        ),
+        'Under review',
+        'Our team is checking your GSTIN and details. You can complete your profile now. Session requests open after approval.',
+      ),
     };
-    final category = (brand['category'] as Map<String, dynamic>?)?['name'] as String?;
+    final category =
+        (brand['category'] as Map<String, dynamic>?)?['name'] as String?;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -186,8 +176,17 @@ class _Dashboard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(child: Text(brand['name'] as String, style: theme.textTheme.headlineSmall)),
-                IconButton(tooltip: 'Refresh', onPressed: onRefresh, icon: const Icon(Icons.refresh)),
+                Expanded(
+                  child: Text(
+                    brand['name'] as String,
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -215,7 +214,10 @@ class _Dashboard extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             _InfoRow('Founder', brand['founderName'] as String?),
-            _InfoRow('Business type', brand['kind'] == 'LOCAL_STORE' ? 'Local store' : 'Online'),
+            _InfoRow(
+              'Business type',
+              brand['kind'] == 'LOCAL_STORE' ? 'Local store' : 'Online',
+            ),
             _InfoRow('Category', category),
             _InfoRow('GSTIN', brand['gstin'] as String?),
           ],
@@ -237,7 +239,10 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          SizedBox(width: 140, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+          SizedBox(
+            width: 140,
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ),
           Expanded(child: Text(value ?? '-')),
         ],
       ),

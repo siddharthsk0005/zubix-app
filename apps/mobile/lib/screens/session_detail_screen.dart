@@ -8,11 +8,16 @@ import '../shopper/server_clock.dart';
 import '../shopper/shopper_api.dart';
 import '../shopper/shopper_models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/centered_content.dart';
 import 'auth_widgets.dart';
 
 /// Shows one session. The shopper starts a countdown, then claims the coupon.
 class SessionDetailScreen extends StatefulWidget {
-  const SessionDetailScreen({super.key, required this.api, required this.sessionId});
+  const SessionDetailScreen({
+    super.key,
+    required this.api,
+    required this.sessionId,
+  });
 
   final ShopperApi api;
   final String sessionId;
@@ -100,7 +105,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       if (!mounted) return;
       setState(() => _error = error.message);
       // The server state changed under us, so reload the session.
-      if (const {'ALREADY_CLAIMED', 'SESSION_NOT_LIVE', 'COUPONS_EXPIRED'}.contains(error.code)) {
+      if (const {
+        'ALREADY_CLAIMED',
+        'SESSION_NOT_LIVE',
+        'COUPONS_EXPIRED',
+      }.contains(error.code)) {
         await _reload();
       }
     } catch (error) {
@@ -110,20 +119,20 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   }
 
   Future<void> _startClaim() => _run(() async {
-        final start = await widget.api.startClaim(widget.sessionId);
-        if (!mounted) return;
-        setState(() {
-          _clock = ServerClock(start.serverTime);
-          _readyAt = start.readyAt;
-        });
-        _startCountdown();
-      });
+    final start = await widget.api.startClaim(widget.sessionId);
+    if (!mounted) return;
+    setState(() {
+      _clock = ServerClock(start.serverTime);
+      _readyAt = start.readyAt;
+    });
+    _startCountdown();
+  });
 
   Future<void> _claim() => _run(() async {
-        final coupon = await widget.api.claim(widget.sessionId);
-        if (!mounted) return;
-        setState(() => _coupon = coupon);
-      });
+    final coupon = await widget.api.claim(widget.sessionId);
+    if (!mounted) return;
+    setState(() => _coupon = coupon);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -131,20 +140,24 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Session')),
       body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.black))
-            : session == null
-                ? _LoadFailed(message: _error, onRetry: _reload)
-                : _SessionBody(
-                    session: session,
-                    coupon: _coupon,
-                    secondsLeft: _secondsLeft,
-                    hasCountdown: _readyAt != null,
-                    busy: _busy,
-                    error: _error,
-                    onStart: _startClaim,
-                    onClaim: _claim,
-                  ),
+        child: CenteredContent(
+          child: _loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.black),
+                )
+              : session == null
+              ? _LoadFailed(message: _error, onRetry: _reload)
+              : _SessionBody(
+                  session: session,
+                  coupon: _coupon,
+                  secondsLeft: _secondsLeft,
+                  hasCountdown: _readyAt != null,
+                  busy: _busy,
+                  error: _error,
+                  onStart: _startClaim,
+                  onClaim: _claim,
+                ),
+        ),
       ),
     );
   }
@@ -230,7 +243,10 @@ class _SessionBody extends StatelessWidget {
     }
 
     if (session.couponsLeft == 0 && !hasCountdown) {
-      return const Text('Sold out.', style: TextStyle(fontWeight: FontWeight.w700));
+      return const Text(
+        'Sold out.',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      );
     }
     if (!hasCountdown) {
       return FilledButton(
@@ -279,7 +295,9 @@ class _CouponCard extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             coupon.code,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: 1.5),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(letterSpacing: 1.5),
           ),
           const SizedBox(height: 8),
           Text('Valid until ${formatWhen(context, coupon.expiresAt)}'),

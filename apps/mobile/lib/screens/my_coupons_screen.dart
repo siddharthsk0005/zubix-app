@@ -4,6 +4,7 @@ import '../shopper/format.dart';
 import '../shopper/shopper_api.dart';
 import '../shopper/shopper_models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/centered_content.dart';
 import 'auth_widgets.dart';
 
 /// Every coupon the shopper has claimed, newest first.
@@ -33,51 +34,59 @@ class _MyCouponsScreenState extends State<MyCouponsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('My coupons')),
       body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.black,
-          onRefresh: _refresh,
-          child: FutureBuilder<List<MyCouponEntry>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return ListView(
-                  children: const [
-                    SizedBox(
-                      height: 320,
-                      child: Center(
-                        child: CircularProgressIndicator(color: AppColors.black),
+        child: CenteredContent(
+          child: RefreshIndicator(
+            color: AppColors.black,
+            onRefresh: _refresh,
+            child: FutureBuilder<List<MyCouponEntry>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return ListView(
+                    children: const [
+                      SizedBox(
+                        height: 320,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.black,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  );
+                }
+                if (snapshot.hasError) {
+                  return ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      ErrorText(messageFor(snapshot.error!)),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _refresh,
+                        child: const Text('Try again'),
+                      ),
+                    ],
+                  );
+                }
+                final coupons = snapshot.data!;
+                if (coupons.isEmpty) {
+                  return ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: const [
+                      Text('No coupons yet. Claim one from a live session.'),
+                    ],
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: coupons.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) =>
+                      _CouponTile(entry: coupons[index]),
                 );
-              }
-              if (snapshot.hasError) {
-                return ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    ErrorText(messageFor(snapshot.error!)),
-                    const SizedBox(height: 12),
-                    OutlinedButton(onPressed: _refresh, child: const Text('Try again')),
-                  ],
-                );
-              }
-              final coupons = snapshot.data!;
-              if (coupons.isEmpty) {
-                return ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: const [
-                    Text('No coupons yet. Claim one from a live session.'),
-                  ],
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: coupons.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) => _CouponTile(entry: coupons[index]),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
@@ -108,7 +117,9 @@ class _CouponTile extends StatelessWidget {
             const SizedBox(height: 8),
             SelectableText(
               coupon.code,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(letterSpacing: 1.2),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(letterSpacing: 1.2),
             ),
             const SizedBox(height: 8),
             Text(

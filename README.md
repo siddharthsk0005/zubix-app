@@ -53,3 +53,13 @@ Demo OTP: set `DEMO_OTP_ENABLED=true` and use code `9001`. This is refused when 
 - `flutter analyze` must report 0 issues.
 - `flutter test` must pass.
 - `npx tsc --noEmit` must pass in `backend/`.
+
+## Responsive layout rule
+
+Every screen must work on Android, iOS, iPad, and web browsers, from phone width up to desktop.
+
+- Never use a fixed width for dialog or form content. Use `dialogContentWidth` in `apps/web/lib/widgets/responsive.dart`.
+- Put two-field rows in `TwoUp`, so they stack on narrow screens.
+- Mobile list and detail bodies go inside `CenteredContent` (`apps/mobile/lib/widgets/centered_content.dart`), which caps width at 640.
+- Signed-in web dashboards use `DashboardScaffold`, which shows a bottom bar below 800px and a side rail at 800px and above.
+- Add a widget test at phone and desktop widths for any new layout.

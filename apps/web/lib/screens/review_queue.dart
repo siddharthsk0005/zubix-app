@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../widgets/responsive.dart';
 
 typedef LoadRows = Future<List<Map<String, dynamic>>> Function(String? status);
-typedef ReviewRow = Future<void> Function(String id, {required bool approve, String? note});
+typedef ReviewRow =
+    Future<void> Function(String id, {required bool approve, String? note});
 
 /// Pending, approved and rejected registrations, with approve and reject actions.
 class ReviewQueue extends StatefulWidget {
@@ -65,11 +67,16 @@ class _ReviewQueueState extends State<ReviewQueue> {
     }
   }
 
-  Future<void> _decide(Map<String, dynamic> row, {required bool approve}) async {
+  Future<void> _decide(
+    Map<String, dynamic> row, {
+    required bool approve,
+  }) async {
     final note = await showDialog<String?>(
       context: context,
       builder: (_) => _NoteDialog(
-        title: approve ? 'Approve ${widget.labelOf(row)}?' : 'Reject ${widget.labelOf(row)}?',
+        title: approve
+            ? 'Approve ${widget.labelOf(row)}?'
+            : 'Reject ${widget.labelOf(row)}?',
         noteRequired: !approve,
         actionLabel: approve ? 'Approve' : 'Reject',
       ),
@@ -77,7 +84,11 @@ class _ReviewQueueState extends State<ReviewQueue> {
     if (note == null) return; // Cancelled.
 
     try {
-      await widget.review(row['id'] as String, approve: approve, note: note.isEmpty ? null : note);
+      await widget.review(
+        row['id'] as String,
+        approve: approve,
+        note: note.isEmpty ? null : note,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(approve ? 'Approved' : 'Rejected')),
@@ -85,7 +96,9 @@ class _ReviewQueueState extends State<ReviewQueue> {
       await _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -98,8 +111,17 @@ class _ReviewQueueState extends State<ReviewQueue> {
         children: [
           Row(
             children: [
-              Expanded(child: Text(widget.title, style: Theme.of(context).textTheme.headlineSmall)),
-              IconButton(tooltip: 'Refresh', onPressed: _refresh, icon: const Icon(Icons.refresh)),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh',
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -135,18 +157,25 @@ class _ReviewQueueState extends State<ReviewQueue> {
         return ListTile(
           title: Text(widget.labelOf(row)),
           subtitle: Text(
-            [widget.detailOf(row), if (note != null && note.isNotEmpty) 'Note: $note']
-                .where((s) => s.isNotEmpty)
-                .join('\n'),
+            [
+              widget.detailOf(row),
+              if (note != null && note.isNotEmpty) 'Note: $note',
+            ].where((s) => s.isNotEmpty).join('\n'),
           ),
           isThreeLine: note != null && note.isNotEmpty,
           trailing: _status == widget.pendingStatus
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextButton(onPressed: () => _decide(row, approve: false), child: const Text('Reject')),
+                    TextButton(
+                      onPressed: () => _decide(row, approve: false),
+                      child: const Text('Reject'),
+                    ),
                     const SizedBox(width: 8),
-                    FilledButton(onPressed: () => _decide(row, approve: true), child: const Text('Approve')),
+                    FilledButton(
+                      onPressed: () => _decide(row, approve: true),
+                      child: const Text('Approve'),
+                    ),
                   ],
                 )
               : null,
@@ -158,7 +187,11 @@ class _ReviewQueueState extends State<ReviewQueue> {
 
 /// Returns the entered note, or null if cancelled. Rejections need a non-empty note.
 class _NoteDialog extends StatefulWidget {
-  const _NoteDialog({required this.title, required this.noteRequired, required this.actionLabel});
+  const _NoteDialog({
+    required this.title,
+    required this.noteRequired,
+    required this.actionLabel,
+  });
 
   final String title;
   final bool noteRequired;
@@ -192,20 +225,25 @@ class _NoteDialogState extends State<_NoteDialog> {
     return AlertDialog(
       title: Text(widget.title),
       content: SizedBox(
-        width: 380,
+        width: dialogContentWidth(context),
         child: TextField(
           controller: _controller,
           maxLines: 3,
           maxLength: 500,
           decoration: InputDecoration(
-            labelText: widget.noteRequired ? 'Reason (required)' : 'Note (optional)',
+            labelText: widget.noteRequired
+                ? 'Reason (required)'
+                : 'Note (optional)',
             errorText: _error,
             border: const OutlineInputBorder(),
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         FilledButton(onPressed: _submit, child: Text(widget.actionLabel)),
       ],
     );

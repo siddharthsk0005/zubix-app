@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../widgets/responsive.dart';
 
 typedef SubmitBrand = Future<void> Function(Map<String, Object?> body);
 
@@ -120,7 +121,9 @@ class _BrandProfileFormState extends State<BrandProfileForm> {
   }
 
   String? Function(String?) _minLength(int min) =>
-      (value) => (value ?? '').trim().length < min ? 'Enter at least $min characters' : null;
+      (value) => (value ?? '').trim().length < min
+      ? 'Enter at least $min characters'
+      : null;
 
   Widget _text(
     TextEditingController controller,
@@ -155,13 +158,15 @@ class _BrandProfileFormState extends State<BrandProfileForm> {
               _email,
               'Work email',
               keyboard: TextInputType.emailAddress,
-              validator: (v) => (v ?? '').contains('@') ? null : 'Enter a valid email',
+              validator: (v) =>
+                  (v ?? '').contains('@') ? null : 'Enter a valid email',
             ),
             _text(
               _password,
               'Password (at least 10 characters)',
               obscure: true,
-              validator: (v) => (v ?? '').length < 10 ? 'Use at least 10 characters' : null,
+              validator: (v) =>
+                  (v ?? '').length < 10 ? 'Use at least 10 characters' : null,
             ),
           ],
           _text(_name, 'Brand name', validator: _minLength(2)),
@@ -182,7 +187,10 @@ class _BrandProfileFormState extends State<BrandProfileForm> {
             decoration: const InputDecoration(labelText: 'Category'),
             items: [
               for (final c in widget.categories)
-                DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String)),
+                DropdownMenuItem(
+                  value: c['id'] as String,
+                  child: Text(c['name'] as String),
+                ),
             ],
             onChanged: (v) => setState(() => _categoryId = v),
             validator: (v) => v == null ? 'Choose a category' : null,
@@ -191,31 +199,36 @@ class _BrandProfileFormState extends State<BrandProfileForm> {
           _text(
             _gstin,
             'GSTIN (15 characters)',
-            validator: (v) => (v ?? '').trim().length == 15 ? null : 'Enter a 15-character GSTIN',
+            validator: (v) => (v ?? '').trim().length == 15
+                ? null
+                : 'Enter a 15-character GSTIN',
           ),
           _text(_address, 'Registered address (optional)'),
           _text(_website, 'Website (optional)', keyboard: TextInputType.url),
           if (local) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _text(
-                    _latitude,
-                    'Latitude',
-                    keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                    validator: (v) => double.tryParse((v ?? '').trim()) == null ? 'Enter a number' : null,
-                  ),
+            TwoUp(
+              first: _text(
+                _latitude,
+                'Latitude',
+                keyboard: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _text(
-                    _longitude,
-                    'Longitude',
-                    keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                    validator: (v) => double.tryParse((v ?? '').trim()) == null ? 'Enter a number' : null,
-                  ),
+                validator: (v) => double.tryParse((v ?? '').trim()) == null
+                    ? 'Enter a number'
+                    : null,
+              ),
+              second: _text(
+                _longitude,
+                'Longitude',
+                keyboard: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
                 ),
-              ],
+                validator: (v) => double.tryParse((v ?? '').trim()) == null
+                    ? 'Enter a number'
+                    : null,
+              ),
             ),
             _text(
               _radius,
@@ -223,14 +236,19 @@ class _BrandProfileFormState extends State<BrandProfileForm> {
               keyboard: TextInputType.number,
               validator: (v) {
                 final n = int.tryParse((v ?? '').trim());
-                return n == null || n < 50 || n > 5000 ? 'Enter a whole number from 50 to 5000' : null;
+                return n == null || n < 50 || n > 5000
+                    ? 'Enter a whole number from 50 to 5000'
+                    : null;
               },
             ),
           ],
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+              child: Text(
+                _error!,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
             ),
           FilledButton(
             onPressed: _saving ? null : _submit,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/admin_api.dart';
 import '../auth/admin_session.dart';
 import '../util/format.dart';
+import '../widgets/dashboard_scaffold.dart';
 import 'categories_screen.dart';
 import 'review_queue.dart';
 
@@ -30,8 +31,10 @@ class _AdminShellState extends State<AdminShell> {
         load: (status) => widget.api.listUsers(token, status: status),
         review: (id, {required approve, note}) =>
             widget.api.reviewUser(token, id, approve: approve, note: note),
-        labelOf: (row) => (row['name'] as String?) ?? (row['phone'] as String? ?? '-'),
-        detailOf: (row) => [row['phone'], row['email']].whereType<String>().join(' · '),
+        labelOf: (row) =>
+            (row['name'] as String?) ?? (row['phone'] as String? ?? '-'),
+        detailOf: (row) =>
+            [row['phone'], row['email']].whereType<String>().join(' · '),
       ),
       ReviewQueue(
         key: const ValueKey('brands'),
@@ -40,7 +43,9 @@ class _AdminShellState extends State<AdminShell> {
         review: (id, {required approve, note}) =>
             widget.api.reviewBrand(token, id, approve: approve, note: note),
         labelOf: (row) => (row['name'] as String?) ?? '-',
-        detailOf: (row) => (row['category'] as Map<String, dynamic>?)?['name'] as String? ?? '',
+        detailOf: (row) =>
+            (row['category'] as Map<String, dynamic>?)?['name'] as String? ??
+            '',
       ),
       ReviewQueue(
         key: const ValueKey('sessions'),
@@ -56,7 +61,9 @@ class _AdminShellState extends State<AdminShell> {
             widget.api.reviewSession(token, id, approve: approve, note: note),
         labelOf: (row) => (row['title'] as String?) ?? '-',
         detailOf: (row) {
-          final brand = (row['brand'] as Map<String, dynamic>?)?['name'] as String? ?? '-';
+          final brand =
+              (row['brand'] as Map<String, dynamic>?)?['name'] as String? ??
+              '-';
           final start = DateTime.parse(row['startsAt'] as String);
           final end = DateTime.parse(row['endsAt'] as String);
           return '$brand · ${formatDateTime(start)} to ${formatDateTime(end)} · '
@@ -66,41 +73,18 @@ class _AdminShellState extends State<AdminShell> {
       CategoriesScreen(api: widget.api, token: token),
     ];
 
-    return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _index,
-            labelType: NavigationRailLabelType.all,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(widget.session.email ?? '', style: Theme.of(context).textTheme.labelSmall),
-            ),
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: IconButton(
-                    tooltip: 'Sign out',
-                    icon: const Icon(Icons.logout),
-                    onPressed: widget.session.end,
-                  ),
-                ),
-              ),
-            ),
-            destinations: const [
-              NavigationRailDestination(icon: Icon(Icons.people_outline), label: Text('Users')),
-              NavigationRailDestination(icon: Icon(Icons.storefront_outlined), label: Text('Brands')),
-              NavigationRailDestination(icon: Icon(Icons.event_outlined), label: Text('Sessions')),
-              NavigationRailDestination(icon: Icon(Icons.category_outlined), label: Text('Categories')),
-            ],
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(child: sections[_index]),
-        ],
-      ),
+    return DashboardScaffold(
+      destinations: const [
+        DashboardDestination(Icons.people_outline, 'Users'),
+        DashboardDestination(Icons.storefront_outlined, 'Brands'),
+        DashboardDestination(Icons.event_outlined, 'Sessions'),
+        DashboardDestination(Icons.category_outlined, 'Categories'),
+      ],
+      selectedIndex: _index,
+      onSelect: (i) => setState(() => _index = i),
+      email: widget.session.email ?? '',
+      onSignOut: widget.session.end,
+      body: sections[_index],
     );
   }
 }
